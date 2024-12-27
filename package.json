@@ -1,0 +1,29 @@
+{
+  "name": "ChatGPT Text Compare",
+  "description": "Add a Grammarly-styled text compare functionality to ChatGPT",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.9",
+    "@types/chrome": "^0.0.280",
+    "autoprefixer": "^10.4.20",
+    "prettier-svg-tidy": "link:../prettier-svg-tidy",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "wxt": "^0.19.13"
+  },
+  "dependencies": {
+    "rakit": "link:../rakit"
+  }
+}
