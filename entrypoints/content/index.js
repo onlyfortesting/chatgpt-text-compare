@@ -6,7 +6,7 @@ import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
 
 import axios from "redaxios"
-
+import { sendMessage } from "webext-bridge/content-script"
 //----------------------------------------------------------------------------------
 // Global Variables
 //----------------------------------------------------------------------------------
@@ -50,32 +50,43 @@ function loadContentScript(url, ctx) {
   } else {
     let chats
     waitUntil(
-      // () => (chats = $$('[data-message-author-role="user"]')).length,
-      () => (chats = $$('[data-message-author-role="assistant"]')).length,
-      // () => (chats = $("[data-message-id]")).length,
+      () => (chats = $$("[data-message-id]")).length,
       () => {
         // console.log(chats)
 
-        chats.forEach((chat) => {
+        async function getChatMarkdown(chat) {
+          if (chat.matches('[data-message-author-role="assistant"]')) {
+            chat._copyButton.click()
+
+            let clipboard = await sendMessage(
+              "read-clipboard",
+              null,
+              "background"
+            )
+            return clipboard
+          } else {
+            // role="user"
+            return $(chat, ".whitespace-pre-wrap").textContent
+          }
+        }
+
+        chats.forEach((chat, i) => {
+          if (!chat.matches('[data-message-author-role="assistant"]')) return
+
           let parent = $(chat, "^.group\\/conversation-turn")
 
-          let copyBtn = $(parent, '[data-testid="copy-turn-action-button"]')
-          let buttonGroup = copyBtn.parentNode.parentNode
+          chat._copyButton = $(
+            parent,
+            '[data-testid="copy-turn-action-button"]'
+          )
+
+          let buttonGroup = chat._copyButton.parentNode.parentNode
 
           buttonGroup.append(
             h(DiffWithPrevButton, {
               onClick: async () => {
-                // axios
-                //   .get(
-                //     "https://chatgpt.com/backend-api/conversation/676e73b5-d544-8002-8e84-546840e11174"
-                //   )
-                //   .then((c) => {
-                //     console.log(c.data)
-                //   })
-
-                copyBtn.click()
-                console.log()
-                // console.log($(parent, ".markdown").textContent)
+                console.log(await getChatMarkdown(chats[i - 1]))
+                console.log(await getChatMarkdown(chat))
               },
             })
           )
@@ -102,6 +113,13 @@ export default defineContentScript({
       axios.defaults.headers = {
         Authorization: "Bearer " + bearer,
       }
+      // axios
+      //   .get(
+      //     "https://chatgpt.com/backend-api/conversation/676e73b5-d544-8002-8e84-546840e11174"
+      //   )
+      //   .then((c) => {
+      //     console.log(c.data)
+      //   })
     })
     //----------------------------------------------------------------------------------
     // Inject "Main World" Script
@@ -111,7 +129,7 @@ export default defineContentScript({
     })
     //----------------------------------------------------------------------------------
     // Load Content Script Based on URL
-    //----------------------------------------------------------------------------------pas
+    //----------------------------------------------------------------------------------
     loadContentScript(window.location, ctx)
 
     ctx.addEventListener(window, "wxt:locationchange", ({ newUrl }) => {

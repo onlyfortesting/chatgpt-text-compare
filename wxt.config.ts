@@ -7,6 +7,7 @@ export default defineConfig({
     disabled: true,
   },
   manifest: {
+    permissions: ["clipboardRead", "clipboardWrite", "offscreen"],
     web_accessible_resources: [
       {
         resources: ["main-world.js"],

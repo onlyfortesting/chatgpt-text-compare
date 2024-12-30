@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "rakit": "link:../rakit",
-    "redaxios": "^0.5.1"
+    "redaxios": "^0.5.1",
+    "webext-bridge": "^6.0.1"
   }
 }
