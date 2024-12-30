@@ -24,6 +24,7 @@
     "wxt": "^0.19.13"
   },
   "dependencies": {
-    "rakit": "link:../rakit"
+    "rakit": "link:../rakit",
+    "redaxios": "^0.5.1"
   }
 }

@@ -3,6 +3,9 @@ import "./style.css"
 import { selectorifyClass } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
+import { DiffWithPrevButton } from "./ChatPage"
+
+import axios from "redaxios"
 
 //----------------------------------------------------------------------------------
 // Global Variables
@@ -47,15 +50,37 @@ function loadContentScript(url, ctx) {
   } else {
     let chats
     waitUntil(
-      () => (chats = $$('[data-message-author-role="user"]')).length,
+      // () => (chats = $$('[data-message-author-role="user"]')).length,
+      () => (chats = $$('[data-message-author-role="assistant"]')).length,
+      // () => (chats = $("[data-message-id]")).length,
       () => {
-        console.log(chats)
+        // console.log(chats)
 
         chats.forEach((chat) => {
-          // let button = $("span[data-state]", chat)
-          // button.parentNode.style.display = "flex"
-          // let myBtn = button.cloneNode(true)
-          // button.after(myBtn)
+          let parent = $(chat, "^.group\\/conversation-turn")
+
+          let copyBtn = $(parent, '[data-testid="copy-turn-action-button"]')
+          let buttonGroup = copyBtn.parentNode.parentNode
+
+          buttonGroup.append(
+            h(DiffWithPrevButton, {
+              onClick: async () => {
+                // axios
+                //   .get(
+                //     "https://chatgpt.com/backend-api/conversation/676e73b5-d544-8002-8e84-546840e11174"
+                //   )
+                //   .then((c) => {
+                //     console.log(c.data)
+                //   })
+
+                copyBtn.click()
+                console.log()
+                // console.log($(parent, ".markdown").textContent)
+              },
+            })
+          )
+
+          console.log(buttonGroup)
         })
       }
     )
@@ -66,9 +91,27 @@ function loadContentScript(url, ctx) {
 //----------------------------------------------------------------------------------
 export default defineContentScript({
   matches: ["*://*.chatgpt.com/*"],
-  // cssInjectionMode: "ui",
 
-  main(ctx) {
+  async main(ctx) {
+    //----------------------------------------------------------------------------------
+    // Message Listener
+    //----------------------------------------------------------------------------------
+    $(document).on("message-from-main", (e) => {
+      const { bearer } = e.detail
+
+      axios.defaults.headers = {
+        Authorization: "Bearer " + bearer,
+      }
+    })
+    //----------------------------------------------------------------------------------
+    // Inject "Main World" Script
+    //----------------------------------------------------------------------------------
+    await injectScript("/main-world.js", {
+      keepInDom: true,
+    })
+    //----------------------------------------------------------------------------------
+    // Load Content Script Based on URL
+    //----------------------------------------------------------------------------------pas
     loadContentScript(window.location, ctx)
 
     ctx.addEventListener(window, "wxt:locationchange", ({ newUrl }) => {
@@ -78,18 +121,3 @@ export default defineContentScript({
     })
   },
 })
-
-// const ui = await createShadowRootUi(ctx, {
-//   name: "example-ui",
-//   position: "after",
-//   anchor: premadePromptContainer,
-//   onMount(container) {
-//     // Define how your UI will be mounted inside the container
-//     const app = document.createElement("p")
-//     $(app).addClass("bg-[#BADA55]")
-//     app.textContent = "Hello world!"
-//     container.append(app)
-//   },
-// })
-//
-// ui.mount()

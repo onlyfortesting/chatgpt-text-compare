@@ -6,6 +6,14 @@ export default defineConfig({
   runner: {
     disabled: true,
   },
+  manifest: {
+    web_accessible_resources: [
+      {
+        resources: ["main-world.js"],
+        matches: ["*://*.chatgpt.com/*"],
+      },
+    ],
+  },
   vite: () => ({
     esbuild: {
       jsxFactory: "h",
