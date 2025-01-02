@@ -24,6 +24,7 @@
     "wxt": "^0.19.13"
   },
   "dependencies": {
+    "diff": "^7.0.0",
     "rakit": "link:../rakit",
     "redaxios": "^0.5.1",
     "webext-bridge": "^6.0.1"

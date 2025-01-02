@@ -1,12 +1,14 @@
 import "rakit"
 import "./style.css"
+
+import { sendMessage } from "webext-bridge/content-script"
 import { selectorifyClass } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
 
 import axios from "redaxios"
-import { sendMessage } from "webext-bridge/content-script"
+import { compare } from "./main"
 //----------------------------------------------------------------------------------
 // Global Variables
 //----------------------------------------------------------------------------------
@@ -85,13 +87,18 @@ function loadContentScript(url, ctx) {
           buttonGroup.append(
             h(DiffWithPrevButton, {
               onClick: async () => {
-                console.log(await getChatMarkdown(chats[i - 1]))
-                console.log(await getChatMarkdown(chat))
+                let a = await getChatMarkdown(chats[i - 1])
+                let b = await getChatMarkdown(chat)
+
+                let comparisonDom = compare(a, b)
+
+                let markdownContainer = $(chat, ".markdown")
+                markdownContainer.style.whiteSpace = "pre-wrap"
+                markdownContainer.textContent = ""
+                markdownContainer.append(...comparisonDom)
               },
             })
           )
-
-          console.log(buttonGroup)
         })
       }
     )
