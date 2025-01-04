@@ -1,5 +1,4 @@
 import { diffWordsWithSpace } from "diff"
-import { getCursorPosition, setCursor } from "./utils"
 
 export function compare(a, b) {
   let diff = diffWordsWithSpace(a, b)
@@ -84,12 +83,12 @@ export function compare(a, b) {
               if (prev.matches?.(".removed")) prev.remove()
               e.currentTarget.replaceWith(e.currentTarget.textContent)
 
-              let startPos = getCursorPosition(result)
-              setCursor(
-                result,
-                startPos,
-                startPos + e.currentTarget.textContent.length
-              )
+              // let startPos = getCursorPosition(result)
+              // setCursor(
+              //   result,
+              //   startPos,
+              //   startPos + e.currentTarget.textContent.length
+              // )
             }}
           >
             {value}
@@ -98,7 +97,7 @@ export function compare(a, b) {
       } else if (c.removed) {
         return (
           <span
-            class="removed bg-red-400/40 line-through cursor-pointer [&:not([data-single]):hover]:no-underline data-[single]:hover:bg-red-400/60"
+            class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer [&:not([data-single]):hover]:no-underline data-[single]:hover:bg-red-400/60`}
             data-single={!a[i + 1]?.added || null}
             onclick={(e) => {
               let next = e.currentTarget.nextSibling
@@ -109,13 +108,6 @@ export function compare(a, b) {
                 e.currentTarget.remove()
                 return
               }
-
-              let startPos = getCursorPosition(result)
-              setCursor(
-                result,
-                startPos,
-                startPos + e.currentTarget.textContent.length
-              )
             }}
           >
             {value}
@@ -124,6 +116,5 @@ export function compare(a, b) {
       }
     })
 
-  // console.log(diffHtml)
   return diffHtml
 }
