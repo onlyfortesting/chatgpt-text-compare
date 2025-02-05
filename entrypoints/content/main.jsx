@@ -2,7 +2,7 @@ import { diffWordsWithSpace } from "diff"
 
 export function compare(a, b) {
   let diff = diffWordsWithSpace(a, b)
-  console.log(diff)
+  // console.log(diff)
 
   /** Copyright https://github.com/EllAchE
    * https://github.com/kpdecker/jsdiff/issues/528
@@ -66,9 +66,24 @@ export function compare(a, b) {
     return mergedChanges
   }
 
-  // console.log(mergeChanges(diff).filter((c) => c.count))
+  return mergeChanges(diff)
+}
 
-  let diffHtml = mergeChanges(diff)
+export async function createDiffHtml(changes, storeKey) {
+  // Remove unused field to save storage space
+  changes.forEach((c) => delete c.count)
+
+  let addremove = changes.filter((c) => c.value)
+
+  function checkResolve() {
+    const isResolved = !addremove.some((c) => c.added || c.removed)
+    if (isResolved) {
+      console.log("clear", storeKey)
+      storage.removeItem(storeKey)
+    }
+  }
+
+  let diffHtml = changes
     .filter((c) => c.value)
     .map((c, i, a) => {
       let value = c.value
@@ -80,15 +95,21 @@ export function compare(a, b) {
             class="added bg-green-400/40 cursor-pointer hover:bg-green-400/50"
             onclick={(e) => {
               let prev = e.currentTarget.previousSibling
-              if (prev.matches?.(".removed")) prev.remove()
+              if (prev.matches?.(".removed")) {
+                prev.remove()
+
+                addremove.splice(addremove.indexOf(c) - 1, 1)
+              }
+
               e.currentTarget.replaceWith(e.currentTarget.textContent)
 
-              // let startPos = getCursorPosition(result)
-              // setCursor(
-              //   result,
-              //   startPos,
-              //   startPos + e.currentTarget.textContent.length
-              // )
+              addremove.splice(addremove.indexOf(c), 1, {
+                value: e.currentTarget.textContent,
+              })
+
+              storage.setItem(storeKey, addremove)
+
+              checkResolve()
             }}
           >
             {value}
@@ -104,10 +125,20 @@ export function compare(a, b) {
               if (next.matches?.(".added")) {
                 next.remove()
                 e.currentTarget.replaceWith(e.currentTarget.textContent)
+
+                addremove.splice(addremove.indexOf(c) + 1, 1)
+                addremove.splice(addremove.indexOf(c), 1, {
+                  value: e.currentTarget.textContent,
+                })
               } else {
                 e.currentTarget.remove()
-                return
+
+                addremove.splice(addremove.indexOf(c), 1)
               }
+
+              storage.setItem(storeKey, addremove)
+
+              checkResolve()
             }}
           >
             {value}

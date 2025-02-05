@@ -8,7 +8,11 @@ import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
 
 import axios from "redaxios"
-import { compare } from "./main"
+import { compare, createDiffHtml } from "./main"
+//----------------------------------------------------------------------------------
+// Constants
+//----------------------------------------------------------------------------------
+const PENDING_DIFF_STORE_PREFIX = "local:pendingdiff_"
 //----------------------------------------------------------------------------------
 // Global Variables
 //----------------------------------------------------------------------------------
@@ -16,15 +20,19 @@ let isHomeModified
 //----------------------------------------------------------------------------------
 // Helpers
 //----------------------------------------------------------------------------------
-function waitUntil(condFn, fn, duration = 250) {
-  if (condFn()) {
-    fn()
-    return
-  }
-
-  setTimeout(() => {
-    waitUntil(condFn, fn, duration)
-  }, duration)
+function waitFor(condFn, duration = 250) {
+  return new Promise((resolve) => {
+    function loop() {
+      let result = condFn()
+      if (result) resolve(result)
+      else {
+        setTimeout(() => {
+          loop()
+        }, duration)
+      }
+    }
+    loop()
+  })
 }
 //----------------------------------------------------------------------------------
 // Main Content Script Code
@@ -35,73 +43,89 @@ function loadContentScript(url, ctx) {
 
     if (url.hash || isHomeModified) return
 
-    let whatCanIHelpWith
+    waitFor(() =>
+      $(selectorifyClass("mb-7 hidden text-center @lg/thread:block"))
+    ).then((whatCanIHelpWith) => {
+      whatCanIHelpWith.after(HomePrompts({}))
 
-    waitUntil(
-      () =>
-        (whatCanIHelpWith = $(
-          selectorifyClass("mb-7 hidden text-center @lg/thread:block")
-        )),
-      async () => {
-        // console.log(whatCanIHelpWith)
-        whatCanIHelpWith.after(HomePrompts({}))
-
-        isHomeModified = true
-      }
-    )
+      isHomeModified = true
+    })
   } else {
     let chats
-    waitUntil(
-      () => (chats = $$("[data-message-id]")).length,
-      () => {
-        // console.log(chats)
-
-        async function getChatMarkdown(chat) {
-          if (chat.matches('[data-message-author-role="assistant"]')) {
-            chat._copyButton.click()
-
-            let clipboard = await sendMessage(
-              "read-clipboard",
-              null,
-              "background"
-            )
-            return clipboard
-          } else {
-            // role="user"
-            return $(chat, ".whitespace-pre-wrap").textContent
-          }
-        }
-
-        chats.forEach((chat, i) => {
-          if (!chat.matches('[data-message-author-role="assistant"]')) return
-
-          let parent = $(chat, "^.group\\/conversation-turn")
-
-          chat._copyButton = $(
-            parent,
-            '[data-testid="copy-turn-action-button"]'
-          )
-
-          let buttonGroup = chat._copyButton.parentNode.parentNode
-
-          buttonGroup.append(
-            h(DiffWithPrevButton, {
-              onClick: async () => {
-                let a = await getChatMarkdown(chats[i - 1])
-                let b = await getChatMarkdown(chat)
-
-                let comparisonDom = compare(a, b)
-
-                let markdownContainer = $(chat, ".markdown")
-                markdownContainer.style.whiteSpace = "pre-wrap"
-                markdownContainer.textContent = ""
-                markdownContainer.append(...comparisonDom)
-              },
-            })
-          )
-        })
+    waitFor(() => (chats = $$("[data-message-id]")).length).then(() => {
+      //----------------------------------------------------------------------------------
+      // Helpers
+      //----------------------------------------------------------------------------------
+      function getChatId(chat) {
+        return chat.dataset.messageId
       }
-    )
+
+      async function getChatMarkdown(chat) {
+        if (chat.matches('[data-message-author-role="assistant"]')) {
+          chat._copyButton.click()
+
+          await sleep(50)
+
+          let clipboard = await sendMessage(
+            "read-clipboard",
+            null,
+            "background"
+          )
+          return clipboard
+        } else {
+          // role="user"
+          console.log($(chat, ".whitespace-pre-wrap"))
+          return $(chat, ".whitespace-pre-wrap").textContent
+        }
+      }
+
+      async function showDiff(chat) {
+        const pendingStoreKey = PENDING_DIFF_STORE_PREFIX + getChatId(chat)
+
+        let pending = await storage.getItem(pendingStoreKey)
+        let changes =
+          (pending?.length && pending) ||
+          compare(
+            await getChatMarkdown(chats[chats.indexOf(chat) - 1]),
+            await getChatMarkdown(chat)
+          )
+
+        let comparisonDom = await createDiffHtml(changes, pendingStoreKey)
+
+        let markdownContainer = await waitFor(() => $(chat, ".markdown"))
+        markdownContainer.style.whiteSpace = "pre-wrap"
+        markdownContainer.textContent = ""
+        markdownContainer.append(...comparisonDom)
+      }
+      //----------------------------------------------------------------------------------
+      // Processing Chats
+      //----------------------------------------------------------------------------------
+      chats.forEach((chat, i) => {
+        if (!chat.matches('[data-message-author-role="assistant"]')) return
+
+        let parent = $(chat, "^.group\\/conversation-turn")
+
+        chat._copyButton = $(parent, '[data-testid="copy-turn-action-button"]')
+
+        let buttonGroup = chat._copyButton.parentNode.parentNode
+
+        storage
+          .getItem(PENDING_DIFF_STORE_PREFIX + getChatId(chat))
+          .then(async (c) => {
+            if (!c?.length) return
+
+            showDiff(chat)
+          })
+
+        buttonGroup.append(
+          h(DiffWithPrevButton, {
+            onClick: () => {
+              showDiff(chat)
+            },
+          })
+        )
+      })
+    })
   }
 }
 //----------------------------------------------------------------------------------

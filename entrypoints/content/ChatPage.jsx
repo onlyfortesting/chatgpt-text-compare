@@ -3,7 +3,6 @@ export function DiffWithPrevButton({ onClick }) {
     <span>
       <button
         class="rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary"
-        aria-label="Awooga booga"
         onclick={onClick}
       >
         <span class="flex h-[32px] w-[32px] items-center justify-center">
