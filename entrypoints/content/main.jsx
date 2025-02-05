@@ -24,7 +24,7 @@ export function compare(a, b) {
         removedText += part.value
         removedCount += part.count ?? 0
       } else if (part.value.length <= 5) {
-        // we ignore small unchanged segments (<= 4 characters),
+        // we ignore small unchanged segments (<= 5 characters),
         // which catches most whitespace too
         addedText += part.value
         removedText += part.value
@@ -70,6 +70,9 @@ export function compare(a, b) {
 }
 
 export async function createDiffHtml(changes, storeKey) {
+  // TODO: Make nearby add remove always remove each other (doesn't depend on ordering)
+  console.log(changes.slice())
+
   // Remove unused field to save storage space
   changes.forEach((c) => delete c.count)
 
@@ -95,7 +98,7 @@ export async function createDiffHtml(changes, storeKey) {
             class="added bg-green-400/40 cursor-pointer hover:bg-green-400/50"
             onclick={(e) => {
               let prev = e.currentTarget.previousSibling
-              if (prev.matches?.(".removed")) {
+              if (prev?.matches?.(".removed")) {
                 prev.remove()
 
                 addremove.splice(addremove.indexOf(c) - 1, 1)
@@ -122,7 +125,7 @@ export async function createDiffHtml(changes, storeKey) {
             data-single={!a[i + 1]?.added || null}
             onclick={(e) => {
               let next = e.currentTarget.nextSibling
-              if (next.matches?.(".added")) {
+              if (next?.matches?.(".added")) {
                 next.remove()
                 e.currentTarget.replaceWith(e.currentTarget.textContent)
 

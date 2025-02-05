@@ -2,7 +2,7 @@ import "rakit"
 import "./style.css"
 
 import { sendMessage } from "webext-bridge/content-script"
-import { selectorifyClass } from "rakit/utils"
+import { selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
@@ -17,23 +17,6 @@ const PENDING_DIFF_STORE_PREFIX = "local:pendingdiff_"
 // Global Variables
 //----------------------------------------------------------------------------------
 let isHomeModified
-//----------------------------------------------------------------------------------
-// Helpers
-//----------------------------------------------------------------------------------
-function waitFor(condFn, duration = 250) {
-  return new Promise((resolve) => {
-    function loop() {
-      let result = condFn()
-      if (result) resolve(result)
-      else {
-        setTimeout(() => {
-          loop()
-        }, duration)
-      }
-    }
-    loop()
-  })
-}
 //----------------------------------------------------------------------------------
 // Main Content Script Code
 //----------------------------------------------------------------------------------
