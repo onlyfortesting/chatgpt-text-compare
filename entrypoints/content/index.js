@@ -74,11 +74,64 @@ function loadContentScript(url, ctx) {
           )
 
         let comparisonDom = await createDiffHtml(changes, pendingStoreKey)
-
+        //----------------------------------------------------------------------------------
+        // Replace markdown with diff
+        //----------------------------------------------------------------------------------
         let markdownContainer = await waitFor(() => $(chat, ".markdown"))
         markdownContainer.style.whiteSpace = "pre-wrap"
         markdownContainer.textContent = ""
         markdownContainer.append(...comparisonDom)
+        //----------------------------------------------------------------------------------
+        // Click listener for diff items
+        //----------------------------------------------------------------------------------
+        // Remove unused field to save storage space
+        changes.forEach((c) => delete c.count)
+
+        let addremove = changes.filter((c) => c.value)
+
+        $(chat)
+          .off("pointerdown", chat._diffclick)
+          .on(
+            "pointerdown",
+            (chat._diffclick = (e) => {
+              if (e.buttons !== 1) return
+
+              let closest = e.target.closest(".added,.removed")
+              if (!closest) return
+
+              e.preventDefault()
+              e.stopPropagation()
+
+              let nearby = [closest.nextSibling, closest.previousSibling].find(
+                (c) => c?._data?.added || c?._data?.removed
+              )
+
+              if (nearby) {
+                nearby.remove()
+                addremove.splice(addremove.indexOf(nearby._data), 1)
+
+                closest.replaceWith(closest._data.value)
+                addremove.splice(addremove.indexOf(closest._data), 1, {
+                  value: closest._data.value,
+                })
+              } else {
+                if (closest._data.added) {
+                  closest.replaceWith(closest._data.value)
+                  addremove.splice(addremove.indexOf(closest._data), 1, {
+                    value: closest._data.value,
+                  })
+                }
+                if (closest._data.removed) {
+                  closest.remove()
+                  addremove.splice(addremove.indexOf(closest._data), 1)
+                }
+              }
+
+              const isResolved = !addremove.some((c) => c.added || c.removed)
+              if (isResolved) storage.removeItem(pendingStoreKey)
+              else storage.setItem(pendingStoreKey, addremove.slice())
+            })
+          )
       }
       //----------------------------------------------------------------------------------
       // Processing Chats

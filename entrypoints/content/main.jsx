@@ -69,23 +69,7 @@ export function compare(a, b) {
   return mergeChanges(diff)
 }
 
-export async function createDiffHtml(changes, storeKey) {
-  // TODO: Make nearby add remove always remove each other (doesn't depend on ordering)
-  console.log(changes.slice())
-
-  // Remove unused field to save storage space
-  changes.forEach((c) => delete c.count)
-
-  let addremove = changes.filter((c) => c.value)
-
-  function checkResolve() {
-    const isResolved = !addremove.some((c) => c.added || c.removed)
-    if (isResolved) {
-      console.log("clear", storeKey)
-      storage.removeItem(storeKey)
-    }
-  }
-
+export async function createDiffHtml(changes) {
   let diffHtml = changes
     .filter((c) => c.value)
     .map((c, i, a) => {
@@ -96,24 +80,7 @@ export async function createDiffHtml(changes, storeKey) {
         return (
           <span
             class="added bg-green-400/40 cursor-pointer hover:bg-green-400/50"
-            onclick={(e) => {
-              let prev = e.currentTarget.previousSibling
-              if (prev?.matches?.(".removed")) {
-                prev.remove()
-
-                addremove.splice(addremove.indexOf(c) - 1, 1)
-              }
-
-              e.currentTarget.replaceWith(e.currentTarget.textContent)
-
-              addremove.splice(addremove.indexOf(c), 1, {
-                value: e.currentTarget.textContent,
-              })
-
-              storage.setItem(storeKey, addremove)
-
-              checkResolve()
-            }}
+            _data={c}
           >
             {value}
           </span>
@@ -122,27 +89,7 @@ export async function createDiffHtml(changes, storeKey) {
         return (
           <span
             class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer [&:not([data-single]):hover]:no-underline data-[single]:hover:bg-red-400/60`}
-            data-single={!a[i + 1]?.added || null}
-            onclick={(e) => {
-              let next = e.currentTarget.nextSibling
-              if (next?.matches?.(".added")) {
-                next.remove()
-                e.currentTarget.replaceWith(e.currentTarget.textContent)
-
-                addremove.splice(addremove.indexOf(c) + 1, 1)
-                addremove.splice(addremove.indexOf(c), 1, {
-                  value: e.currentTarget.textContent,
-                })
-              } else {
-                e.currentTarget.remove()
-
-                addremove.splice(addremove.indexOf(c), 1)
-              }
-
-              storage.setItem(storeKey, addremove)
-
-              checkResolve()
-            }}
+            _data={c}
           >
             {value}
           </span>
