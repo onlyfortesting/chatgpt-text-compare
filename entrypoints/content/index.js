@@ -126,6 +126,7 @@ function loadContentScript(url, ctx) {
                   nearby.replaceWith(nearbyEmptier)
                   closest.replaceWith(closestReplacer)
 
+                  const addremoveClone = addremove.slice()
                   addremove.splice(addremove.indexOf(nearby._data), 1)
                   addremove.splice(addremove.indexOf(closest._data), 1, {
                     value: closest._data.value,
@@ -134,38 +135,58 @@ function loadContentScript(url, ctx) {
                   return () => {
                     nearbyEmptier.replaceWith(nearby)
                     closestReplacer.replaceWith(closest)
+
+                    addremove.length = 0
+                    addremove.push(...addremoveClone)
                   }
                 })
               } else {
                 if (closest._data.added) {
                   batch.push(() => {
                     closest.replaceWith(closestReplacer)
+
+                    const addremoveClone = addremove.slice()
                     addremove.splice(addremove.indexOf(closest._data), 1, {
                       value: closest._data.value,
                     })
 
                     return () => {
                       closestReplacer.replaceWith(closest)
+
+                      addremove.length = 0
+                      addremove.push(...addremoveClone)
                     }
                   })
                 }
                 if (closest._data.removed) {
                   batch.push(() => {
                     closest.replaceWith(closestEmptier)
+
+                    const addremoveClone = addremove.slice()
                     addremove.splice(addremove.indexOf(closest._data), 1)
 
                     return () => {
                       closestEmptier.replaceWith(closest)
+
+                      addremove.length = 0
+                      addremove.push(...addremoveClone)
                     }
                   })
                 }
               }
 
-              batch.done()
+              const save = () => {
+                const isResolved = !addremove.some((c) => c.added || c.removed)
+                if (isResolved) storage.removeItem(pendingStoreKey)
+                else storage.setItem(pendingStoreKey, addremove.slice())
+              }
 
-              const isResolved = !addremove.some((c) => c.added || c.removed)
-              if (isResolved) storage.removeItem(pendingStoreKey)
-              else storage.setItem(pendingStoreKey, addremove.slice())
+              batch.push(() => {
+                save()
+                return () => save()
+              })
+
+              batch.done()
             })
           )
       }
