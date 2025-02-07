@@ -1,7 +1,4 @@
 import { diffWordsWithSpace } from "diff"
-import { createUndoer } from "rakit/utils"
-
-export const undoer = createUndoer()
 
 export function compare(a, b) {
   let diff = diffWordsWithSpace(a, b)

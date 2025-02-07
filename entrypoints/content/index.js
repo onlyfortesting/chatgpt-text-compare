@@ -8,7 +8,9 @@ import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
 
 import axios from "redaxios"
-import { compare, createDiffHtml, undoer } from "./main"
+import { compare, createDiffHtml } from "./main"
+
+import { createUndoer } from "rakit/utils"
 //----------------------------------------------------------------------------------
 // Constants
 //----------------------------------------------------------------------------------
@@ -88,6 +90,12 @@ function loadContentScript(url, ctx) {
         changes.forEach((c) => delete c.count)
 
         let addremove = changes.filter((c) => c.value)
+
+        const undoer = createUndoer({
+          onUpdate() {
+            chat._undoer(this)
+          },
+        })
 
         $(chat)
           .off("pointerdown", chat._diffclick)
@@ -173,6 +181,15 @@ function loadContentScript(url, ctx) {
 
         let buttonGroup = chat._copyButton.parentNode.parentNode
 
+        buttonGroup.append(
+          h(DiffWithPrevButton, {
+            chat,
+            onClick: () => {
+              showDiff(chat)
+            },
+          })
+        )
+
         storage
           .getItem(PENDING_DIFF_STORE_PREFIX + getChatId(chat))
           .then(async (c) => {
@@ -180,16 +197,6 @@ function loadContentScript(url, ctx) {
 
             showDiff(chat)
           })
-
-        buttonGroup.append(
-          h(DiffWithPrevButton, {
-            onClick: () => {
-              showDiff(chat)
-            },
-            onUndo: () => undoer.undo(),
-            onRedo: () => undoer.redo(),
-          })
-        )
       })
     })
   }
