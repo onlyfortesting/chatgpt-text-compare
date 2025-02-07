@@ -98,27 +98,28 @@ export function DiffWithPrevButton({ chat, onClick }) {
   )
 }
 
-export function Tooltip({ content }) {
+export function Tooltip({ show, content }) {
   return (
     <div
+      hidden={() => !show()}
       data-side="bottom"
       data-align="center"
       data-state="instant-open"
-      class="fixed left-(--mouse-x) top-(--mouse-y) -translate-x-1/2 pointer-events-none z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950 max-w-xs"
+      class="fixed left-[--mouse-x] top-[calc(var(--mouse-y)+24px)] -translate-x-1/2 pointer-events-none z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950 max-w-xs"
     >
       <span class="flex items-center whitespace-pre-wrap font-semibold normal-case text-center text-gray-100 text-sm">
         {content}
       </span>
-      {/* <span style="position: absolute; top: 0px; transform-origin: center 0px; transform: rotate(180deg); left: 55px;"> */}
-      {/*   <div */}
-      {/*     class="relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950" */}
-      {/*     width="10" */}
-      {/*     height="5" */}
-      {/*     viewbox="0 0 30 10" */}
-      {/*     preserveaspectratio="none" */}
-      {/*     style="display: block;" */}
-      {/*   ></div> */}
-      {/* </span> */}
+      <span style="position: absolute; top: 0px; transform-origin: center 0px; transform: rotate(180deg); left: 50%;">
+        <div
+          class="relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950"
+          width="10"
+          height="5"
+          viewbox="0 0 30 10"
+          preserveaspectratio="none"
+          style="display: block;"
+        ></div>
+      </span>
     </div>
   )
 }

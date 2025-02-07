@@ -224,15 +224,16 @@ function loadContentScript(url, ctx) {
     // Tooltip Handling
     //----------------------------------------------------------------------------------
     let showTooltip = $state(false)
-    let text = $state("ehehe")
-    let tooltip = Tooltip({ content: text })
+    let text = $state("Nice Tooltip")
+    let tooltip = Tooltip({ content: text, show: showTooltip })
+    document.body.append(tooltip) // WARNING: no cleanup
     let timeId
     $(document)
       .off("pointerover", document._onOver)
       .on(
         "pointerover",
         (document._onOver = (e) => {
-          const target = e.target.closest(".added,.removed")
+          const target = e.target.closest(`[data-single="true"]`)
           if (!target) {
             clearTimeout(timeId)
             showTooltip(false)
@@ -254,14 +255,6 @@ function loadContentScript(url, ctx) {
           tooltip.style.setProperty("--mouse-y", e.clientY + "px")
         })
       )
-
-    $effect(() => {
-      if (showTooltip()) {
-        if (!tooltip.parentNode) document.body.append(tooltip)
-      } else {
-        if (tooltip.parentNode) tooltip.remove()
-      }
-    })
   }
 }
 //----------------------------------------------------------------------------------

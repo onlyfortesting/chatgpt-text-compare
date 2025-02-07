@@ -95,7 +95,7 @@ export async function createDiffHtml(changes) {
       } else if (c.removed) {
         return (
           <span
-            class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer not-[[data-single]]:hover:no-underline! data-single:hover:bg-red-400/60`}
+            class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer [&:not([data-single])]:hover:no-underline data-[single]:hover:bg-red-400/60`}
             data-single={!isPair}
             _data={c}
           >
