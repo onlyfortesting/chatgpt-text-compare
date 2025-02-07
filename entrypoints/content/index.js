@@ -8,7 +8,7 @@ import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
 
 import axios from "redaxios"
-import { compare, createDiffHtml } from "./main"
+import { compare, createDiffHtml, undoer } from "./main"
 //----------------------------------------------------------------------------------
 // Constants
 //----------------------------------------------------------------------------------
@@ -106,26 +106,54 @@ function loadContentScript(url, ctx) {
                 (c) => c?._data?.added || c?._data?.removed
               )
 
+              const batch = undoer.batcher()
+              const closestEmptier = document.createTextNode("")
+              const closestReplacer = document.createTextNode(
+                closest._data.value
+              )
               if (nearby) {
-                nearby.remove()
-                addremove.splice(addremove.indexOf(nearby._data), 1)
+                const nearbyEmptier = document.createTextNode("")
 
-                closest.replaceWith(closest._data.value)
-                addremove.splice(addremove.indexOf(closest._data), 1, {
-                  value: closest._data.value,
-                })
-              } else {
-                if (closest._data.added) {
-                  closest.replaceWith(closest._data.value)
+                batch.push(() => {
+                  nearby.replaceWith(nearbyEmptier)
+                  closest.replaceWith(closestReplacer)
+
+                  addremove.splice(addremove.indexOf(nearby._data), 1)
                   addremove.splice(addremove.indexOf(closest._data), 1, {
                     value: closest._data.value,
                   })
+
+                  return () => {
+                    nearbyEmptier.replaceWith(nearby)
+                    closestReplacer.replaceWith(closest)
+                  }
+                })
+              } else {
+                if (closest._data.added) {
+                  batch.push(() => {
+                    closest.replaceWith(closestReplacer)
+                    addremove.splice(addremove.indexOf(closest._data), 1, {
+                      value: closest._data.value,
+                    })
+
+                    return () => {
+                      closestReplacer.replaceWith(closest)
+                    }
+                  })
                 }
                 if (closest._data.removed) {
-                  closest.remove()
-                  addremove.splice(addremove.indexOf(closest._data), 1)
+                  batch.push(() => {
+                    closest.replaceWith(closestEmptier)
+                    addremove.splice(addremove.indexOf(closest._data), 1)
+
+                    return () => {
+                      closestEmptier.replaceWith(closest)
+                    }
+                  })
                 }
               }
+
+              batch.done()
 
               const isResolved = !addremove.some((c) => c.added || c.removed)
               if (isResolved) storage.removeItem(pendingStoreKey)
@@ -158,6 +186,8 @@ function loadContentScript(url, ctx) {
             onClick: () => {
               showDiff(chat)
             },
+            onUndo: () => undoer.undo(),
+            onRedo: () => undoer.redo(),
           })
         )
       })
