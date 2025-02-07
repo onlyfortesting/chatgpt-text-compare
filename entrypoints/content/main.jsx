@@ -75,11 +75,18 @@ export async function createDiffHtml(changes) {
     .map((c, i, a) => {
       let value = c.value
 
+      const isPair =
+        a[i - 1]?.added ||
+        a[i - 1]?.removed ||
+        a[i + 1]?.added ||
+        a[i + 1]?.removed
+
       if (!c.added && !c.removed) return value
       else if (c.added) {
         return (
           <span
             class="added bg-green-400/40 cursor-pointer hover:bg-green-400/50"
+            data-single={!isPair}
             _data={c}
           >
             {value}
@@ -88,7 +95,8 @@ export async function createDiffHtml(changes) {
       } else if (c.removed) {
         return (
           <span
-            class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer [&:not([data-single]):hover]:no-underline data-[single]:hover:bg-red-400/60`}
+            class={`removed bg-red-400/40 ${value.trim() ? "line-through" : ""} cursor-pointer not-[[data-single]]:hover:no-underline! data-single:hover:bg-red-400/60`}
+            data-single={!isPair}
             _data={c}
           >
             {value}

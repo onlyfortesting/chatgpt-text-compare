@@ -5,7 +5,7 @@ import { sendMessage } from "webext-bridge/content-script"
 import { selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
-import { DiffWithPrevButton } from "./ChatPage"
+import { DiffWithPrevButton, Tooltip } from "./ChatPage"
 
 import axios from "redaxios"
 import { compare, createDiffHtml } from "./main"
@@ -219,6 +219,48 @@ function loadContentScript(url, ctx) {
             showDiff(chat)
           })
       })
+    })
+    //----------------------------------------------------------------------------------
+    // Tooltip Handling
+    //----------------------------------------------------------------------------------
+    let showTooltip = $state(false)
+    let text = $state("ehehe")
+    let tooltip = Tooltip({ content: text })
+    let timeId
+    $(document)
+      .off("pointerover", document._onOver)
+      .on(
+        "pointerover",
+        (document._onOver = (e) => {
+          const target = e.target.closest(".added,.removed")
+          if (!target) {
+            clearTimeout(timeId)
+            showTooltip(false)
+            return
+          }
+
+          timeId = setTimeout(() => {
+            showTooltip(true)
+          }, 500)
+        })
+      )
+
+    $(document)
+      .off("mousemove", document._onMove)
+      .on(
+        "mousemove",
+        (document._onMove = (e) => {
+          tooltip.style.setProperty("--mouse-x", e.clientX + "px")
+          tooltip.style.setProperty("--mouse-y", e.clientY + "px")
+        })
+      )
+
+    $effect(() => {
+      if (showTooltip()) {
+        if (!tooltip.parentNode) document.body.append(tooltip)
+      } else {
+        if (tooltip.parentNode) tooltip.remove()
+      }
     })
   }
 }
