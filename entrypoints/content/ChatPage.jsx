@@ -12,6 +12,7 @@ export function DiffWithPrevButton({ chat, onClick }) {
           diffing(true)
           onClick(e)
         }}
+        data-my-tooltip="Compare with previous chat"
       >
         <span class="flex h-[32px] w-[32px] items-center justify-center">
           {svg(() => (
@@ -36,90 +37,89 @@ export function DiffWithPrevButton({ chat, onClick }) {
           ))}
         </span>
       </button>
-      {() =>
-        undoer() && (
-          <>
-            <button
-              class="rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary disabled:opacity-60"
-              disabled={() => !undoer().canUndo()}
-              onclick={() => undoer().undo()}
-            >
-              <span class="flex h-[32px] w-[32px] items-center justify-center">
-                {svg(() => (
-                  <svg
-                    class="icon-md-heavy"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
+      {$when(undoer, () => (
+        <>
+          <button
+            class="rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary disabled:opacity-60"
+            disabled={() => !undoer().canUndo()}
+            onclick={() => undoer().undo()}
+            data-my-tooltip="Undo"
+          >
+            <span class="flex h-[32px] w-[32px] items-center justify-center">
+              {svg(() => (
+                <svg
+                  class="icon-md-heavy"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                >
+                  <g
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
                   >
-                    <g
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    >
-                      <path d="m9 14l-4-4l4-4" />
-                      <path d="M5 10h11a4 4 0 1 1 0 8h-1" />
-                    </g>
-                  </svg>
-                ))}
-              </span>
-            </button>
-            <button
-              class="rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary disabled:opacity-60"
-              disabled={() => !undoer().canRedo()}
-              onclick={() => undoer().redo()}
-            >
-              <span class="flex h-[32px] w-[32px] items-center justify-center">
-                {svg(() => (
-                  <svg
-                    class="icon-md-heavy"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
+                    <path d="m9 14l-4-4l4-4" />
+                    <path d="M5 10h11a4 4 0 1 1 0 8h-1" />
+                  </g>
+                </svg>
+              ))}
+            </span>
+          </button>
+          <button
+            class="rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary disabled:opacity-60"
+            disabled={() => !undoer().canRedo()}
+            onclick={() => undoer().redo()}
+            data-my-tooltip="Redo"
+          >
+            <span class="flex h-[32px] w-[32px] items-center justify-center">
+              {svg(() => (
+                <svg
+                  class="icon-md-heavy"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                >
+                  <g
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
                   >
-                    <g
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    >
-                      <path d="m15 14l4-4l-4-4" />
-                      <path d="M19 10H8a4 4 0 1 0 0 8h1" />
-                    </g>
-                  </svg>
-                ))}
-              </span>
-            </button>
-          </>
-        )
-      }
+                    <path d="m15 14l4-4l-4-4" />
+                    <path d="M19 10H8a4 4 0 1 0 0 8h1" />
+                  </g>
+                </svg>
+              ))}
+            </span>
+          </button>
+        </>
+      ))}
     </span>
   )
 }
 
-export function Tooltip({ show, children }) {
+export function Tooltip({ children, ...rest }) {
   return (
-    <div
-      hidden={() => !show()}
-      data-side="bottom"
-      data-align="center"
-      data-state="instant-open"
-      class="fixed left-[--mouse-x] top-[calc(var(--mouse-y)+24px)] -translate-x-1/2 pointer-events-none z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950 max-w-xs"
-    >
-      <span class="flex items-center whitespace-pre-wrap font-semibold normal-case text-center text-gray-100 text-sm">
-        {children}
-      </span>
-      <span style="position: absolute; top: 0px; transform-origin: center 0px; transform: rotate(180deg); left: 50%;">
-        <div
-          class="relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950"
-          width="10"
-          height="5"
-          viewbox="0 0 30 10"
-          preserveaspectratio="none"
-          style="display: block;"
-        ></div>
-      </span>
+    <div class="fixed pointer-events-none z-50 select-none" {...rest}>
+      <div class="relative -left-1/2 shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950 max-w-xs">
+        <span class="flex items-center whitespace-pre-wrap font-semibold normal-case text-center text-gray-100 text-sm">
+          {children}
+        </span>
+        <span
+          class="absolute top-0 left-1/2 -translate-x-1/2 rotate-180"
+          style="transform-origin: center 0px"
+        >
+          <div
+            class="relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950"
+            width="10"
+            height="5"
+            viewbox="0 0 30 10"
+            preserveaspectratio="none"
+            style="display: block;"
+          ></div>
+        </span>
+      </div>
     </div>
   )
 }

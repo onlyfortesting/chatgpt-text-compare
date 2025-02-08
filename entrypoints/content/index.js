@@ -27,8 +27,6 @@ function loadContentScript(url, ctx) {
   cleaner.clean()
 
   if (url.pathname === "/") {
-    // If it's homepage
-
     if (url.hash || isHomeModified) return
 
     waitFor(() =>
@@ -69,7 +67,9 @@ function loadContentScript(url, ctx) {
 
       async function showDiff(chat) {
         const pendingStoreKey = PENDING_DIFF_STORE_PREFIX + getChatId(chat)
-
+        //----------------------------------------------------------------------------------
+        // Load pending diff, if doesn't exist then create a new diff
+        //----------------------------------------------------------------------------------
         let pending = await storage.getItem(pendingStoreKey)
         let changes =
           (pending?.length && pending) ||
@@ -238,41 +238,103 @@ function loadContentScript(url, ctx) {
       })
     })
     //----------------------------------------------------------------------------------
-    // Tooltip Handling
+    // Tooltip: Init
     //----------------------------------------------------------------------------------
-    let showTooltip = $state(false)
-    let tooltipContent = $state(TooltipDiffSingle())
-    let tooltip = h(Tooltip, { show: showTooltip }, tooltipContent)
+    const tooltip = createTooltip(function () {
+      this.tooltipContent = $state("")
+      return Tooltip({ children: this.tooltipContent })
+    })
 
-    document.body.append(tooltip)
-    cleaner.push(() => tooltip.remove())
+    const tooltipDiff = createTooltip(() =>
+      Tooltip({ children: TooltipDiffSingle })
+    )
+    //----------------------------------------------------------------------------------
+    // Tooltip: Helpers
+    //----------------------------------------------------------------------------------
+    function createTooltip(initFn, timeout = 500) {
+      let ctx = {}
+      let tooltip = initFn.call(ctx)
+      let timeId
 
-    let timeId
-    $(document)
-      .off("pointerover", document._onOver)
-      .on(
-        "pointerover",
-        (document._onOver = (e) => {
-          const target = e.target.closest(`[data-single="true"]`)
+      return {
+        update({ target, onShow, onRemove }) {
+          clearTimeout(timeId)
+
+          tooltip._onRemove = () => {
+            onRemove.call(ctx, { target, tooltip })
+            tooltip.remove()
+          }
+
           if (!target) {
-            clearTimeout(timeId)
-            showTooltip(false)
+            tooltip._onRemove()
             return
           }
 
-          timeId = setTimeout(() => {
-            showTooltip(true)
-          }, 500)
-        })
-      )
+          timeId = setTimeout(
+            () => {
+              onShow.call(ctx, { target, tooltip })
 
+              if (!tooltip.parentNode) document.body.append(tooltip)
+
+              // Remove tooltip on click
+              $(target)
+                .off("pointerdown", target._onTooltipDown)
+                .on(
+                  "pointerdown",
+                  (target._onTooltipDown = () => {
+                    tooltip._onRemove()
+                  })
+                )
+            },
+            tooltip.parentNode ? 0 : timeout
+          )
+        },
+      }
+    }
+    //----------------------------------------------------------------------------------
+    // Tooltip: Mouse position for tooltip diff item positioning
+    //----------------------------------------------------------------------------------
+    const mouseX = $state(0)
+    const mouseY = $state(0)
     $(document)
       .off("mousemove", document._onMove)
       .on(
         "mousemove",
         (document._onMove = (e) => {
-          tooltip.style.setProperty("--mouse-x", e.clientX + "px")
-          tooltip.style.setProperty("--mouse-y", e.clientY + "px")
+          mouseX(e.clientX)
+          mouseY(e.clientY)
+        })
+      )
+    //----------------------------------------------------------------------------------
+    // Tooltip: Logic
+    //----------------------------------------------------------------------------------
+    $(document)
+      .off("pointerover", document._onOver)
+      .on(
+        "pointerover",
+        (document._onOver = (e) => {
+          tooltip.update({
+            target: e.target.closest(`[data-my-tooltip]`),
+            onShow({ target, tooltip }) {
+              this.tooltipContent(target.dataset.myTooltip)
+
+              let { left, bottom, width } = target.getBoundingClientRect()
+              tooltip.style.left = left + width / 2 + "px"
+              tooltip.style.top = bottom + 6 + "px"
+            },
+            onRemove() {
+              this.tooltipContent("")
+            },
+          })
+
+          tooltipDiff.update({
+            target: e.target.closest(`[data-single="true"]`),
+            onShow({ tooltip }) {
+              tooltip.style.left = mouseX() + "px"
+              tooltip.style.top = mouseY() + 24 + "px"
+            },
+            onRemove: () => {},
+          })
         })
       )
   }
@@ -312,6 +374,7 @@ export default defineContentScript({
     //----------------------------------------------------------------------------------
     loadContentScript(window.location, ctx)
 
+    // Handle SPA navigation
     ctx.addEventListener(window, "wxt:locationchange", ({ newUrl }) => {
       if (newUrl.pathname !== "/") isHomeModified = false
 
