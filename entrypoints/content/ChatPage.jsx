@@ -99,7 +99,6 @@ export function DiffWithPrevButton({ chat, onClick }) {
 }
 
 export function Tooltip({ show, children }) {
-  console.log(children)
   return (
     <div
       hidden={() => !show()}
@@ -125,9 +124,9 @@ export function Tooltip({ show, children }) {
   )
 }
 
-export function TooltipDiffSingle({ show }) {
+export function TooltipDiffSingle() {
   return (
-    <Tooltip show={show}>
+    <>
       <div class="flex gap-6">
         <div class="flex gap-2">
           {svg(() => (
@@ -174,6 +173,6 @@ export function TooltipDiffSingle({ show }) {
           Reject
         </div>
       </div>
-    </Tooltip>
+    </>
   )
 }

@@ -5,7 +5,7 @@ import { sendMessage } from "webext-bridge/content-script"
 import { createCleaner, selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
-import { DiffWithPrevButton, TooltipDiffSingle } from "./ChatPage"
+import { DiffWithPrevButton, Tooltip, TooltipDiffSingle } from "./ChatPage"
 
 import axios from "redaxios"
 import { compare, createDiffHtml } from "./main"
@@ -105,13 +105,23 @@ function loadContentScript(url, ctx) {
           .on(
             "pointerdown",
             (chat._diffclick = (e) => {
-              if (e.buttons !== 1) return
-
               let closest = e.target.closest(".added,.removed")
               if (!closest) return
 
               e.preventDefault()
               e.stopPropagation()
+
+              let reject
+              if (e.buttons === 2) {
+                $(e.currentTarget).on(
+                  "contextmenu",
+                  (x) => x.preventDefault(),
+                  {
+                    once: true,
+                  }
+                )
+                reject = true
+              }
 
               let nearby = [closest.nextSibling, closest.previousSibling].find(
                 (c) => c?._data?.added || c?._data?.removed
@@ -123,6 +133,8 @@ function loadContentScript(url, ctx) {
                 closest._data.value
               )
               if (nearby) {
+                if (reject) return
+
                 const nearbyEmptier = document.createTextNode("")
 
                 batch.push(() => {
@@ -144,7 +156,10 @@ function loadContentScript(url, ctx) {
                   }
                 })
               } else {
-                if (closest._data.added) {
+                if (
+                  (closest._data.added && !reject) ||
+                  (closest._data.removed && reject)
+                ) {
                   batch.push(() => {
                     closest.replaceWith(closestReplacer)
 
@@ -160,8 +175,7 @@ function loadContentScript(url, ctx) {
                       addremove.push(...addremoveClone)
                     }
                   })
-                }
-                if (closest._data.removed) {
+                } else {
                   batch.push(() => {
                     closest.replaceWith(closestEmptier)
 
@@ -227,7 +241,8 @@ function loadContentScript(url, ctx) {
     // Tooltip Handling
     //----------------------------------------------------------------------------------
     let showTooltip = $state(false)
-    let tooltip = TooltipDiffSingle({ show: showTooltip })
+    let tooltipContent = $state(TooltipDiffSingle())
+    let tooltip = h(Tooltip, { show: showTooltip }, tooltipContent)
 
     document.body.append(tooltip)
     cleaner.push(() => tooltip.remove())
