@@ -2,10 +2,10 @@ import "rakit"
 import "./style.css"
 
 import { sendMessage } from "webext-bridge/content-script"
-import { selectorifyClass, waitFor } from "rakit/utils"
+import { createCleaner, selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
-import { DiffWithPrevButton, Tooltip } from "./ChatPage"
+import { DiffWithPrevButton, TooltipDiffSingle } from "./ChatPage"
 
 import axios from "redaxios"
 import { compare, createDiffHtml } from "./main"
@@ -19,10 +19,13 @@ const PENDING_DIFF_STORE_PREFIX = "local:pendingdiff_"
 // Global Variables
 //----------------------------------------------------------------------------------
 let isHomeModified
+let cleaner = createCleaner()
 //----------------------------------------------------------------------------------
 // Main Content Script Code
 //----------------------------------------------------------------------------------
 function loadContentScript(url, ctx) {
+  cleaner.clean()
+
   if (url.pathname === "/") {
     // If it's homepage
 
@@ -224,9 +227,11 @@ function loadContentScript(url, ctx) {
     // Tooltip Handling
     //----------------------------------------------------------------------------------
     let showTooltip = $state(false)
-    let text = $state("Nice Tooltip")
-    let tooltip = Tooltip({ content: text, show: showTooltip })
-    document.body.append(tooltip) // WARNING: no cleanup
+    let tooltip = TooltipDiffSingle({ show: showTooltip })
+
+    document.body.append(tooltip)
+    cleaner.push(() => tooltip.remove())
+
     let timeId
     $(document)
       .off("pointerover", document._onOver)
