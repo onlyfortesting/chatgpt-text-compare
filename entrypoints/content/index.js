@@ -5,7 +5,8 @@ import { sendMessage } from "webext-bridge/content-script"
 import { createCleaner, selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
-import { DiffWithPrevButton, Tooltip, TooltipDiffSingle } from "./ChatPage"
+import { DiffWithPrevButton } from "./ChatPage"
+import { Tooltip, TooltipDiffSingle } from "./Tooltip"
 
 import axios from "redaxios"
 import { compare, createDiffHtml } from "./main"
@@ -238,17 +239,6 @@ function loadContentScript(url, ctx) {
       })
     })
     //----------------------------------------------------------------------------------
-    // Tooltip: Init
-    //----------------------------------------------------------------------------------
-    const tooltip = createTooltip(function () {
-      this.tooltipContent = $state("")
-      return Tooltip({ children: this.tooltipContent })
-    })
-
-    const tooltipDiff = createTooltip(() =>
-      Tooltip({ children: TooltipDiffSingle })
-    )
-    //----------------------------------------------------------------------------------
     // Tooltip: Helpers
     //----------------------------------------------------------------------------------
     function createTooltip(initFn, timeout = 500) {
@@ -306,6 +296,20 @@ function loadContentScript(url, ctx) {
         })
       )
     //----------------------------------------------------------------------------------
+    // Tooltip: Init
+    //----------------------------------------------------------------------------------
+    const tooltip = createTooltip(function () {
+      this.tooltipContent = $state("")
+      return Tooltip({ children: this.tooltipContent })
+    })
+
+    const tooltipDiff = createTooltip(() =>
+      Tooltip({
+        style: () => `left:${mouseX()}px; top:${mouseY() + 24}px`,
+        children: TooltipDiffSingle,
+      })
+    )
+    //----------------------------------------------------------------------------------
     // Tooltip: Logic
     //----------------------------------------------------------------------------------
     $(document)
@@ -318,22 +322,18 @@ function loadContentScript(url, ctx) {
             onShow({ target, tooltip }) {
               this.tooltipContent(target.dataset.myTooltip)
 
+              // Positioning
               let { left, bottom, width } = target.getBoundingClientRect()
               tooltip.style.left = left + width / 2 + "px"
               tooltip.style.top = bottom + 6 + "px"
             },
-            onRemove() {
-              this.tooltipContent("")
-            },
+            onRemove() {},
           })
 
           tooltipDiff.update({
             target: e.target.closest(`[data-single="true"]`),
-            onShow({ tooltip }) {
-              tooltip.style.left = mouseX() + "px"
-              tooltip.style.top = mouseY() + 24 + "px"
-            },
-            onRemove: () => {},
+            onShow() {},
+            onRemove() {},
           })
         })
       )
