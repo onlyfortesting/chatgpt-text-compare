@@ -244,6 +244,7 @@ function loadContentScript(url, ctx) {
       let ctx = {}
       let tooltip = initFn.call(ctx)
       let timeId
+      let lastTarget
 
       return {
         update({ target, onShow, onRemove }) {
@@ -265,15 +266,18 @@ function loadContentScript(url, ctx) {
 
               if (!tooltip.parentNode) document.body.append(tooltip)
 
+              if (lastTarget)
+                $(lastTarget).off("pointerdown", lastTarget._onTooltipDown)
+
+              lastTarget = target
+
               // Remove tooltip on click
-              $(target)
-                .off("pointerdown", target._onTooltipDown)
-                .on(
-                  "pointerdown",
-                  (target._onTooltipDown = () => {
-                    tooltip._onRemove()
-                  })
-                )
+              $(target).on(
+                "pointerdown",
+                (target._onTooltipDown = () => {
+                  tooltip._onRemove()
+                })
+              )
             },
             tooltip.parentNode ? 0 : timeout
           )
