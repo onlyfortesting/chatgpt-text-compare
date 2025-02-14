@@ -2,7 +2,7 @@ import "rakit"
 import "./style.css"
 
 import { sendMessage } from "webext-bridge/content-script"
-import { createCleaner, selectorifyClass, waitFor } from "rakit/utils"
+import { selectorifyClass, waitFor } from "rakit/utils"
 
 import { HomePrompts } from "./HomePrompts"
 import { DiffWithPrevButton } from "./ChatPage"
@@ -20,13 +20,10 @@ const PENDING_DIFF_STORE_PREFIX = "local:pendingdiff_"
 // Global Variables
 //----------------------------------------------------------------------------------
 let isHomeModified
-let cleaner = createCleaner()
 //----------------------------------------------------------------------------------
 // Main Content Script Code
 //----------------------------------------------------------------------------------
 function loadContentScript(url, ctx) {
-  cleaner.clean()
-
   if (url.pathname === "/") {
     if (url.hash || isHomeModified) return
 
@@ -41,7 +38,7 @@ function loadContentScript(url, ctx) {
     let chats
     waitFor(() => (chats = $$("[data-message-id]")).length).then(() => {
       //----------------------------------------------------------------------------------
-      // Helpers
+      // Chat: Helpers
       //----------------------------------------------------------------------------------
       function getChatId(chat) {
         return chat.dataset.messageId
@@ -69,7 +66,7 @@ function loadContentScript(url, ctx) {
       async function showDiff(chat) {
         const pendingStoreKey = PENDING_DIFF_STORE_PREFIX + getChatId(chat)
         //----------------------------------------------------------------------------------
-        // Load pending diff, if doesn't exist then create a new diff
+        // # Load pending diff, if it doesn't exist then create a new diff
         //----------------------------------------------------------------------------------
         let pending = await storage.getItem(pendingStoreKey)
         let changes =
@@ -81,14 +78,14 @@ function loadContentScript(url, ctx) {
 
         let comparisonDom = await createDiffHtml(changes, pendingStoreKey)
         //----------------------------------------------------------------------------------
-        // Replace markdown with diff
+        // # Replace chat text with diff
         //----------------------------------------------------------------------------------
         let markdownContainer = await waitFor(() => $(chat, ".markdown"))
         markdownContainer.style.whiteSpace = "pre-wrap"
         markdownContainer.textContent = ""
         markdownContainer.append(...comparisonDom)
         //----------------------------------------------------------------------------------
-        // Click listener for diff items
+        // # Click listener for diff items
         //----------------------------------------------------------------------------------
         // Remove unused field to save storage space
         changes.forEach((c) => delete c.count)
@@ -114,6 +111,9 @@ function loadContentScript(url, ctx) {
 
               let reject
               if (e.buttons === 2) {
+                reject = true
+
+                // Disable context menu when right clicking (one-time)
                 $(e.currentTarget).on(
                   "contextmenu",
                   (x) => x.preventDefault(),
@@ -121,7 +121,6 @@ function loadContentScript(url, ctx) {
                     once: true,
                   }
                 )
-                reject = true
               }
 
               let nearby = [closest.nextSibling, closest.previousSibling].find(
@@ -209,7 +208,7 @@ function loadContentScript(url, ctx) {
           )
       }
       //----------------------------------------------------------------------------------
-      // Processing Chats
+      // Chat: Augmenting Chats
       //----------------------------------------------------------------------------------
       chats.forEach((chat, i) => {
         if (!chat.matches('[data-message-author-role="assistant"]')) return
@@ -340,14 +339,14 @@ function loadContentScript(url, ctx) {
   }
 }
 //----------------------------------------------------------------------------------
-// WXT Content Script Initializer
+// WXT: WXT Content Script Initializer
 //----------------------------------------------------------------------------------
 export default defineContentScript({
   matches: ["*://*.chatgpt.com/*"],
 
   async main(ctx) {
     //----------------------------------------------------------------------------------
-    // Message Listener
+    // # Message Listener
     //----------------------------------------------------------------------------------
     $(document).on("message-from-main", (e) => {
       const { bearer } = e.detail
@@ -355,22 +354,17 @@ export default defineContentScript({
       axios.defaults.headers = {
         Authorization: "Bearer " + bearer,
       }
-      // axios
-      //   .get(
-      //     "https://chatgpt.com/backend-api/conversation/676e73b5-d544-8002-8e84-546840e11174"
-      //   )
-      //   .then((c) => {
-      //     console.log(c.data)
-      //   })
+      // let res = await axios.get("https://chatgpt.com/backend-api/conversation/676e73b5-d544-8002-8e84-546840e11174")
+      // console.log(res.data)
     })
     //----------------------------------------------------------------------------------
-    // Inject "Main World" Script
+    // # Inject "Main World" Script
     //----------------------------------------------------------------------------------
     await injectScript("/main-world.js", {
       keepInDom: true,
     })
     //----------------------------------------------------------------------------------
-    // Load Content Script Based on URL
+    // # Load Content Script Based on URL
     //----------------------------------------------------------------------------------
     loadContentScript(window.location, ctx)
 
