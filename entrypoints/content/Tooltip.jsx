@@ -1,3 +1,112 @@
+//----------------------------------------------------------------------------------
+// Tooltip: Helpers
+//----------------------------------------------------------------------------------
+function createTooltip(initFn, timeout = 500) {
+  let ctx = {}
+  let tooltip = initFn.call(ctx)
+  let timeId
+  let lastTarget
+
+  return {
+    update({ target, onShow, onRemove }) {
+      clearTimeout(timeId)
+
+      tooltip._onRemove = () => {
+        onRemove.call(ctx, { target, tooltip })
+        tooltip.remove()
+      }
+
+      if (!target) {
+        tooltip._onRemove()
+        return
+      }
+
+      timeId = setTimeout(
+        () => {
+          onShow.call(ctx, { target, tooltip })
+
+          if (!tooltip.parentNode) document.body.append(tooltip)
+
+          if (lastTarget)
+            $(lastTarget).off("pointerdown", lastTarget._onTooltipDown)
+
+          lastTarget = target
+
+          // Remove tooltip on click
+          $(target).on(
+            "pointerdown",
+            (target._onTooltipDown = () => {
+              tooltip._onRemove()
+            })
+          )
+        },
+        tooltip.parentNode ? 0 : timeout
+      )
+    },
+  }
+}
+//----------------------------------------------------------------------------------
+// Tooltip: Setup
+//----------------------------------------------------------------------------------
+export function setupTooltip() {
+  //----------------------------------------------------------------------------------
+  // Tooltip: Mouse position for tooltip diff item positioning
+  //----------------------------------------------------------------------------------
+  const mouseX = $state(0)
+  const mouseY = $state(0)
+  $(document)
+    .off("mousemove", document._onMove)
+    .on(
+      "mousemove",
+      (document._onMove = (e) => {
+        mouseX(e.clientX)
+        mouseY(e.clientY)
+      })
+    )
+  //----------------------------------------------------------------------------------
+  // Tooltip: Init
+  //----------------------------------------------------------------------------------
+  const tooltip = createTooltip(function () {
+    this.tooltipContent = $state("")
+    return Tooltip({ children: this.tooltipContent })
+  })
+
+  const tooltipDiff = createTooltip(() =>
+    Tooltip({
+      style: () => `left:${mouseX()}px; top:${mouseY() + 24}px`,
+      children: TooltipDiffSingle,
+    })
+  )
+  //----------------------------------------------------------------------------------
+  // Tooltip: Logic
+  //----------------------------------------------------------------------------------
+  $(document)
+    .off("pointerover", document._onOver)
+    .on(
+      "pointerover",
+      (document._onOver = (e) => {
+        tooltip.update({
+          target: e.target.closest(`[data-my-tooltip]`),
+          onShow({ target, tooltip }) {
+            this.tooltipContent(target.dataset.myTooltip)
+
+            // Positioning
+            let { left, bottom, width } = target.getBoundingClientRect()
+            tooltip.style.left = left + width / 2 + "px"
+            tooltip.style.top = bottom + 6 + "px"
+          },
+          onRemove() {},
+        })
+
+        tooltipDiff.update({
+          target: e.target.closest(`[data-single="true"]`),
+          onShow() {},
+          onRemove() {},
+        })
+      })
+    )
+}
+
 export function Tooltip({ children, ...rest }) {
   return (
     <div class="fixed pointer-events-none z-50 select-none" {...rest}>
