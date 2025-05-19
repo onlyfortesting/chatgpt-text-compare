@@ -107,6 +107,45 @@ export function setupTooltip() {
     )
 }
 
+export function XTooltip({ children, ...rest }) {
+  return (
+    <div
+      data-radix-popper-content-wrapper=""
+      style="position: fixed; min-width: max-content; --radix-popper-transform-origin: 50% 0px; z-index: 50; --radix-popper-available-width: 1004.7999877929688px; --radix-popper-available-height: 185.41248703002935px; --radix-popper-anchor-width: 65.45000457763672px; --radix-popper-anchor-height: 30.387500762939453px;"
+      {...rest}
+    >
+      <div
+        data-side="bottom"
+        data-align="center"
+        data-state="delayed-open"
+        class="relative z-50 transition-opacity select-none px-2 py-1 rounded-lg overflow-hidden bg-black max-w-xs"
+        style="--radix-tooltip-content-transform-origin: var(--radix-popper-transform-origin); --radix-tooltip-content-available-width: var(--radix-popper-available-width); --radix-tooltip-content-available-height: var(--radix-popper-available-height); --radix-tooltip-trigger-width: var(--radix-popper-anchor-width); --radix-tooltip-trigger-height: var(--radix-popper-anchor-height);"
+      >
+        <div class="flex gap-1">
+          <div>
+            <div class="text-xs font-semibold whitespace-pre-wrap normal-case text-center text-white">
+              {children}
+            </div>
+          </div>
+        </div>
+        <span
+          id="radix-«r2g»"
+          role="tooltip"
+          style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;"
+        >
+          <div class="flex gap-1">
+            <div>
+              <div class="text-xs font-semibold whitespace-pre-wrap normal-case text-center text-white">
+                {children}
+              </div>
+            </div>
+          </div>
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function Tooltip({ children, ...rest }) {
   return (
     <div class="fixed pointer-events-none z-50 select-none" {...rest}>

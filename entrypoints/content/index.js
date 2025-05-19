@@ -34,130 +34,169 @@ async function loadContentScript(url, ctx) {
     whatCanIHelpWith.after(HomePrompts({}))
     isHomeModified = true
   } else {
-    let chats
-    await waitFor(() => (chats = $$("[data-message-id]")).length)
-    //----------------------------------------------------------------------------------
-    // Chat: Helpers
-    //----------------------------------------------------------------------------------
-    function getChatId(chat) {
-      return chat.dataset.messageId
-    }
+    async function overConversationBox(e) {
+      const chat = $(e.target, "^[data-message-id]")
 
-    async function getChatMarkdown(chat) {
-      if (chat.matches('[data-message-author-role="assistant"]')) {
-        chat._copyButton.click()
+      if (!chat || !chat.matches('[data-message-author-role="assistant"]'))
+        return
 
-        await sleep(50)
+      const conversation = $(chat, '^[data-testid^="conversation-turn"]')
 
-        let clipboard = await sendMessage("read-clipboard", null, "background")
-        return clipboard
-      } else {
-        // role="user"
-        console.log($(chat, ".whitespace-pre-wrap"))
-        return $(chat, ".whitespace-pre-wrap").textContent
+      if (conversation._augmented) return
+
+      await tick()
+
+      chat._copyButton = $(
+        conversation,
+        '[data-testid="copy-turn-action-button"]'
+      )
+
+      const buttonGroup = chat._copyButton.parentNode.parentNode
+
+      // console.log(conversation)
+      // console.log(chat)
+      // console.log(getChatId(chat))
+      // console.log(chat._copyButton)
+      // console.log(buttonGroup)
+
+      buttonGroup.append(
+        h(DiffWithPrevButton, {
+          chat,
+          onClick: () => {
+            console.log("awooga")
+            // showDiff(chat)
+          },
+        })
+      )
+
+      conversation._augmented = 1
+
+      // storage
+      //   .getItem(PENDING_DIFF_STORE_PREFIX + getChatId(chat))
+      //   .then(async (c) => {
+      //     if (!c?.length) return
+      //
+      //     showDiff(chat)
+      //   })
+
+      let res = await getChatMarkdown(chat)
+      console.log(res)
+      //----------------------------------------------------------------------------------
+      // Tooltip: Setup
+      //----------------------------------------------------------------------------------
+      setupTooltip()
+      //----------------------------------------------------------------------------------
+      // Chat: Helpers
+      //----------------------------------------------------------------------------------
+      function getChatId(chat) {
+        return chat.dataset.messageId
       }
-    }
 
-    async function showDiff(chat) {
-      const pendingStoreKey = PENDING_DIFF_STORE_PREFIX + getChatId(chat)
-      //----------------------------------------------------------------------------------
-      // # Load pending diff, if it doesn't exist then create a new diff
-      //----------------------------------------------------------------------------------
-      let pending = await storage.getItem(pendingStoreKey)
-      let changes =
-        (pending?.length && pending) ||
-        compare(
-          await getChatMarkdown(chats[chats.indexOf(chat) - 1]),
-          await getChatMarkdown(chat)
-        )
+      async function getChatMarkdown(chat) {
+        if (chat.matches('[data-message-author-role="assistant"]')) {
+          chat._copyButton.click()
 
-      let comparisonDom = await createDiffHtml(changes, pendingStoreKey)
-      //----------------------------------------------------------------------------------
-      // # Replace chat text with diff
-      //----------------------------------------------------------------------------------
-      let markdownContainer = await waitFor(() => $(chat, ".markdown"))
-      markdownContainer.style.whiteSpace = "pre-wrap"
-      markdownContainer.textContent = ""
-      markdownContainer.append(...comparisonDom)
-      //----------------------------------------------------------------------------------
-      // # Click listener for diff items
-      //----------------------------------------------------------------------------------
-      // Remove unused field to save storage space
-      changes.forEach((c) => delete c.count)
+          await sleep(50)
 
-      let addremove = changes.filter((c) => c.value)
+          let clipboard = await sendMessage(
+            "read-clipboard",
+            null,
+            "background"
+          )
+          return clipboard
+        } else {
+          // role="user"
+          console.log($(chat, ".whitespace-pre-wrap"))
+          return $(chat, ".whitespace-pre-wrap").textContent
+        }
+      }
 
-      const undoer = createUndoer({
-        onUpdate() {
-          chat._undoer(this)
-        },
-      })
+      async function showDiff(chat) {
+        const pendingStoreKey = PENDING_DIFF_STORE_PREFIX + getChatId(chat)
+        //----------------------------------------------------------------------------------
+        // # Load pending diff, if it doesn't exist then create a new diff
+        //----------------------------------------------------------------------------------
+        let pending = await storage.getItem(pendingStoreKey)
+        let changes =
+          (pending?.length && pending) ||
+          compare(
+            await getChatMarkdown(chats[chats.indexOf(chat) - 1]),
+            await getChatMarkdown(chat)
+          )
 
-      $(chat)
-        .off("pointerdown", chat._diffclick)
-        .on(
-          "pointerdown",
-          (chat._diffclick = (e) => {
-            let closest = e.target.closest(".added,.removed")
-            if (!closest) return
+        let comparisonDom = await createDiffHtml(changes, pendingStoreKey)
+        //----------------------------------------------------------------------------------
+        // # Replace chat text with diff
+        //----------------------------------------------------------------------------------
+        let markdownContainer = await waitFor(() => $(chat, ".markdown"))
+        markdownContainer.style.whiteSpace = "pre-wrap"
+        markdownContainer.textContent = ""
+        markdownContainer.append(...comparisonDom)
+        //----------------------------------------------------------------------------------
+        // # Click listener for diff items
+        //----------------------------------------------------------------------------------
+        // Remove unused field to save storage space
+        changes.forEach((c) => delete c.count)
 
-            e.preventDefault()
-            e.stopPropagation()
+        let addremove = changes.filter((c) => c.value)
 
-            let reject
-            if (e.buttons === 2) {
-              reject = true
+        const undoer = createUndoer({
+          onUpdate() {
+            chat._undoer(this)
+          },
+        })
 
-              // Disable context menu when right clicking (one-time)
-              $(e.currentTarget).on("contextmenu", (x) => x.preventDefault(), {
-                once: true,
-              })
-            }
+        $(chat)
+          .off("pointerdown", chat._diffclick)
+          .on(
+            "pointerdown",
+            (chat._diffclick = (e) => {
+              let closest = e.target.closest(".added,.removed")
+              if (!closest) return
 
-            let nearby = [closest.nextSibling, closest.previousSibling].find(
-              (c) => c?._data?.added || c?._data?.removed
-            )
+              e.preventDefault()
+              e.stopPropagation()
 
-            const batch = undoer.batcher()
-            const closestEmptier = document.createTextNode("")
-            const closestReplacer = document.createTextNode(closest._data.value)
-            if (nearby) {
-              if (reject) return
+              let reject
+              if (e.buttons === 2) {
+                reject = true
 
-              const nearbyEmptier = document.createTextNode("")
+                // Disable context menu when right clicking (one-time)
+                $(e.currentTarget).on(
+                  "contextmenu",
+                  (x) => x.preventDefault(),
+                  {
+                    once: true,
+                  }
+                )
+              }
 
-              batch.push(() => {
-                nearby.replaceWith(nearbyEmptier)
-                closest.replaceWith(closestReplacer)
+              let nearby = [closest.nextSibling, closest.previousSibling].find(
+                (c) => c?._data?.added || c?._data?.removed
+              )
 
-                const addremoveClone = addremove.slice()
-                addremove.splice(addremove.indexOf(nearby._data), 1)
-                addremove.splice(addremove.indexOf(closest._data), 1, {
-                  value: closest._data.value,
-                })
+              const batch = undoer.batcher()
+              const closestEmptier = document.createTextNode("")
+              const closestReplacer = document.createTextNode(
+                closest._data.value
+              )
+              if (nearby) {
+                if (reject) return
 
-                return () => {
-                  nearbyEmptier.replaceWith(nearby)
-                  closestReplacer.replaceWith(closest)
+                const nearbyEmptier = document.createTextNode("")
 
-                  addremove.length = 0
-                  addremove.push(...addremoveClone)
-                }
-              })
-            } else {
-              if (
-                (closest._data.added && !reject) ||
-                (closest._data.removed && reject)
-              ) {
                 batch.push(() => {
+                  nearby.replaceWith(nearbyEmptier)
                   closest.replaceWith(closestReplacer)
 
                   const addremoveClone = addremove.slice()
+                  addremove.splice(addremove.indexOf(nearby._data), 1)
                   addremove.splice(addremove.indexOf(closest._data), 1, {
                     value: closest._data.value,
                   })
 
                   return () => {
+                    nearbyEmptier.replaceWith(nearby)
                     closestReplacer.replaceWith(closest)
 
                     addremove.length = 0
@@ -165,48 +204,89 @@ async function loadContentScript(url, ctx) {
                   }
                 })
               } else {
-                batch.push(() => {
-                  closest.replaceWith(closestEmptier)
+                if (
+                  (closest._data.added && !reject) ||
+                  (closest._data.removed && reject)
+                ) {
+                  batch.push(() => {
+                    closest.replaceWith(closestReplacer)
 
-                  const addremoveClone = addremove.slice()
-                  addremove.splice(addremove.indexOf(closest._data), 1)
+                    const addremoveClone = addremove.slice()
+                    addremove.splice(addremove.indexOf(closest._data), 1, {
+                      value: closest._data.value,
+                    })
 
-                  return () => {
-                    closestEmptier.replaceWith(closest)
+                    return () => {
+                      closestReplacer.replaceWith(closest)
 
-                    addremove.length = 0
-                    addremove.push(...addremoveClone)
-                  }
-                })
+                      addremove.length = 0
+                      addremove.push(...addremoveClone)
+                    }
+                  })
+                } else {
+                  batch.push(() => {
+                    closest.replaceWith(closestEmptier)
+
+                    const addremoveClone = addremove.slice()
+                    addremove.splice(addremove.indexOf(closest._data), 1)
+
+                    return () => {
+                      closestEmptier.replaceWith(closest)
+
+                      addremove.length = 0
+                      addremove.push(...addremoveClone)
+                    }
+                  })
+                }
               }
-            }
 
-            const save = () => {
-              const isResolved = !addremove.some((c) => c.added || c.removed)
-              if (isResolved) storage.removeItem(pendingStoreKey)
-              else storage.setItem(pendingStoreKey, addremove.slice())
-            }
+              const save = () => {
+                const isResolved = !addremove.some((c) => c.added || c.removed)
+                if (isResolved) storage.removeItem(pendingStoreKey)
+                else storage.setItem(pendingStoreKey, addremove.slice())
+              }
 
-            batch.push(() => {
-              save()
-              return () => save()
+              batch.push(() => {
+                save()
+                return () => save()
+              })
+
+              batch.done()
             })
-
-            batch.done()
-          })
-        )
+          )
+      }
     }
+
+    $(document).on("pointerover", overConversationBox)
+
+    return
     //----------------------------------------------------------------------------------
     // Chat: Augmenting Chats
     //----------------------------------------------------------------------------------
-    chats.forEach((chat, i) => {
+    chats.forEach((chat) => {
       if (!chat.matches('[data-message-author-role="assistant"]')) return
 
-      let parent = $(chat, "^.group\\/conversation-turn")
+      let conversationBox = $(chat, '^[data-testid^="conversation-turn"]')
 
-      chat._copyButton = $(parent, '[data-testid="copy-turn-action-button"]')
+      chat._copyButton = $(
+        conversationBox,
+        '[data-testid="copy-turn-action-button"]'
+      )
+
+      console.log(chat)
+      console.log(conversationBox)
+      console.log(chat._copyButton)
+
+      setTimeout(() => {
+        console.log(conversationBox)
+        console.log(
+          $(conversationBox, '[data-testid="copy-turn-action-button"]')
+        )
+        console.log(conversationBox.querySelector("[data-testid]"))
+      }, 2000)
 
       let buttonGroup = chat._copyButton.parentNode.parentNode
+      console.log(buttonGroup)
 
       buttonGroup.append(
         h(DiffWithPrevButton, {
@@ -225,10 +305,6 @@ async function loadContentScript(url, ctx) {
           showDiff(chat)
         })
     })
-    //----------------------------------------------------------------------------------
-    // Tooltip: Setup
-    //----------------------------------------------------------------------------------
-    setupTooltip()
   }
 }
 //----------------------------------------------------------------------------------
