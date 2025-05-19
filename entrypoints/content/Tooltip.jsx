@@ -68,11 +68,11 @@ export function setupTooltip() {
   //----------------------------------------------------------------------------------
   const tooltip = createTooltip(function () {
     this.tooltipContent = $state("")
-    return Tooltip({ children: this.tooltipContent })
+    return XTooltip({ children: this.tooltipContent })
   })
 
   const tooltipDiff = createTooltip(() =>
-    Tooltip({
+    XTooltip({
       style: () => `left:${mouseX()}px; top:${mouseY() + 24}px`,
       children: TooltipDiffSingle,
     })
@@ -87,12 +87,14 @@ export function setupTooltip() {
       (document._onOver = (e) => {
         tooltip.update({
           target: e.target.closest(`[data-my-tooltip]`),
-          onShow({ target, tooltip }) {
+          async onShow({ target, tooltip }) {
             this.tooltipContent(target.dataset.myTooltip)
 
             // Positioning
             let { left, bottom, width } = target.getBoundingClientRect()
-            tooltip.style.left = left + width / 2 + "px"
+            await tick()
+            let { width: tooltipWidth } = tooltip.getBoundingClientRect()
+            tooltip.style.left = left + width / 2 - tooltipWidth / 2 + "px"
             tooltip.style.top = bottom + 6 + "px"
           },
           onRemove() {},
@@ -111,7 +113,7 @@ export function XTooltip({ children, ...rest }) {
   return (
     <div
       data-radix-popper-content-wrapper=""
-      style="position: fixed; min-width: max-content; --radix-popper-transform-origin: 50% 0px; z-index: 50; --radix-popper-available-width: 1004.7999877929688px; --radix-popper-available-height: 185.41248703002935px; --radix-popper-anchor-width: 65.45000457763672px; --radix-popper-anchor-height: 30.387500762939453px;"
+      style="position: fixed; min-width: max-content; --radix-popper-transform-origin: 50% 0px; z-index: 50;"
       {...rest}
     >
       <div
