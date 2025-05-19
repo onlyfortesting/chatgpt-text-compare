@@ -44,14 +44,16 @@ async function loadContentScript(url, ctx) {
 
       if (conversation._augmented) return
 
-      await tick()
+      conversation._augmented = 1
 
-      chat._copyButton = $(
-        conversation,
-        '[data-testid="copy-turn-action-button"]'
+      chat._copyButton = await waitFor(
+        () => $(conversation, '[data-testid="copy-turn-action-button"]'),
+        50
       )
 
+      console.log(chat._copyButton)
       const buttonGroup = chat._copyButton.parentNode.parentNode
+      console.log(buttonGroup)
 
       // console.log(conversation)
       // console.log(chat)
@@ -69,8 +71,6 @@ async function loadContentScript(url, ctx) {
         })
       )
 
-      conversation._augmented = 1
-
       // storage
       //   .getItem(PENDING_DIFF_STORE_PREFIX + getChatId(chat))
       //   .then(async (c) => {
@@ -79,8 +79,9 @@ async function loadContentScript(url, ctx) {
       //     showDiff(chat)
       //   })
 
-      let res = await getChatMarkdown(chat)
-      console.log(res)
+      // let res = await getChatMarkdown(chat)
+      // console.log(res)
+      console.log("augmented")
       //----------------------------------------------------------------------------------
       // Tooltip: Setup
       //----------------------------------------------------------------------------------
