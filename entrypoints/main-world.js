@@ -4,8 +4,7 @@ export default defineUnlistedScript(() => {
   document.dispatchEvent(
     new CustomEvent("message-from-main", {
       detail: {
-        bearer:
-          context.state.loaderData.root['rq:["session"]'].data.accessToken,
+        bearer: null, // context.state.loaderData.root['rq:["session"]'].data.accessToken,
       },
     })
   )
